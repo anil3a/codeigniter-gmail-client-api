@@ -1,0 +1,11 @@
+
+
+::selection { background-color: #27a507; color: white; }
+::-moz-selection { background-color: #27a507; color: white; }
+
+
+body div.col-center-align
+{
+	float: none;
+	margin: 0 auto;
+}
