@@ -27,7 +27,7 @@ class Emails_model extends Core_Model {
         return $this->findAll()->result_array();
     }
 
-    public function insert_or_update( $data )
+    public function insert_or_update( array $data )
     {
         return $this->save( $data );
     }

@@ -9,13 +9,15 @@
               <span class="icon-bar"></span>
               <span class="icon-bar"></span>
             </button>
-            <a class="navbar-brand" href="#">G Proz</a>
+            <a class="navbar-brand" href="#">G Praz</a>
           </div>
           <div id="navbar" class="navbar-collapse collapse">
             <ul class="nav navbar-nav">
               <li class="menu0 <?php if( !empty( $menu )){  if( !empty( $menu[0] ) ) { echo 'active'; } } else { echo 'active'; } ?>"><a href="/">Home</a></li>
-              <li class="menu1 <?php if( !empty( $menu ) && !empty( $menu[1] ) ) { echo 'active'; } ?>"><a href="/google/emails">Gmail Emails</a></li>
-              <li class="menu2 <?php if( !empty( $menu ) && !empty( $menu[2] ) ) { echo 'active'; } ?>"><a href="/google/settings">Gmail Settings</a></li>
+              <li class="menu1 <?php if( !empty( $menu ) && !empty( $menu[1] ) ) { echo 'active'; } ?>"><a href="/settings">Settings</a></li>
+              <li class="menu2 <?php if( !empty( $menu ) && !empty( $menu[2] ) ) { echo 'active'; } ?>"><a href="/google/emails">Gmail Emails</a></li>
+              <li class="menu3 <?php if( !empty( $menu ) && !empty( $menu[3] ) ) { echo 'active'; } ?>"><a href="/google/settings">Gmail Settings</a></li>
+              <li class="menu4 <?php if( !empty( $menu ) && !empty( $menu[4] ) ) { echo 'active'; } ?>"><a href="/google/compose">Gmail Compose</a></li>
             </ul>
            
           </div><!--/.nav-collapse -->

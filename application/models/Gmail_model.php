@@ -7,7 +7,8 @@ class Gmail_model extends Emails_model
 {
     private $service;
     private $client;
-    private $attachment = array();
+    private $attachment = array( array( 'filename', 'filetype' ) );
+    private $allowed_file_types = 'gif|jpg|png|pdf|doc|docx|xls|xlsx|ppt|pptx|csv';
 
     public function __construct()
     {
@@ -240,6 +241,7 @@ class Gmail_model extends Emails_model
         }
     }
 
+    // Fancy decode body of email Copied from stackoverflow & blogs & gmail client api docs
     private function decodeBody($body) {
         $rawData = $body;
         $sanitizedData = strtr($rawData,'-_', '+/');
@@ -250,6 +252,7 @@ class Gmail_model extends Emails_model
         return $decodedMessage;
     }
 
+    // Fancy readParts of email Copied from stackoverflow & blogs & gmail client api docs
     private function readParts($parts)
     {
         $attachments = array();
@@ -276,6 +279,7 @@ class Gmail_model extends Emails_model
         );
     }
 
+    // Fancy decode message of email Copied from stackoverflow & blogs & gmail client api docs
     public function decodeMessage($part, $messageId) {
         $mimeType = $part->getMIMEType();
         $result = array();
@@ -315,7 +319,15 @@ class Gmail_model extends Emails_model
         return $result;
     }
 
-    public function sendMessageToDb($userId, $messageId)
+    /**
+     * Save Gmail recieved message to Database
+     * @param   string $userId      User id as "me" or user's email address to retrieve email
+     * @param   string $messageId   Message id from gmail client api
+     * @return  array               result of success or failure of this method code
+     * @author Anil <anilprz3@gmail.com>
+     * @version 1.0
+     */
+    public function sendMessageToDb( string $userId, string $messageId)
     {
         if (empty($this->service)) {
             return 'Service not found.';
@@ -443,7 +455,7 @@ class Gmail_model extends Emails_model
 
                                 $data = $newAtt['data'];
                             } else {
-                                $att->getBody()->getData();
+                                $data = $att->getBody()->getData();
                             }
 
                             $data = $this->decodeBody($data);
@@ -479,14 +491,6 @@ class Gmail_model extends Emails_model
         }
     }
 
-    public function encodeEmailAddresss( $recipient ){
-        $recipientsCharset = 'utf-8';
-        if (preg_match("/(.*)<(.*)>/", $recipient, $regs)) {
-            $recipient = '=?' . $recipientsCharset . '?B?'.base64_encode($regs[1]).'?= <'.$regs[2].'>';
-        }
-        return $recipient;
-    }
-
     /**
      * Add attachment to property to check before an email is send
      * @param array $attachment
@@ -505,10 +509,243 @@ class Gmail_model extends Emails_model
      */
     public function clear_attachments()
     {
-        $this->attachment = array();
+        $this->attachment = array( array( 'filename', 'filetype' ) );
     }
 
-    public function debugMessage( $userId, $messageId )
+    /**
+     * Send Email with Gmail Api
+     * @param   string          $email_to   Email to send to
+     * @param   string          $subject    Email Subject
+     * @param   string          $message    Email main message content
+     * @param   string          $email_from Email sender email
+     * @param   string          $email_name Email sender name
+     * @param   string|array    $Cc         Email CC email to send to
+     * @param   string|array    $Bcc        Email BCC email to send to
+     * @param   array           $extras     Email related datas/extra variables
+     * @return  void
+     * @author  Anil <anilprz3@gmail.com>
+     * @version 1.0
+     */
+    public function send_email_new( string $email_to, string $subject, string $message, $email_from = false, $email_name = false, $Cc = false, $Bcc = false, $extras = array() )
+    {
+        $send = false;
+
+        if ( empty($this->service) ) {
+            return array('success' => false, 'message' => 'Service not found.', 'errorCode' => '004');
+        }
+
+        if ( empty($email_from) ) {
+            $email_from = $this->system->get_option('google_email_from');
+        }
+
+        if ( empty($email_name) ) {
+            $email_name = $this->system->get_option('google_name_from');
+        }
+
+        try {
+            
+            $mime = new Mail_mime();
+
+            $mime->setSubject( $subject );
+            $mime->setTXTBody( strip_tags( $message ) );
+            $mime->setHTMLBody( $message );
+            $mime->setFrom( $email_name. ' <'.$email_from.'>' );
+            $mime->addTo( $email_to );
+
+            if ( !empty( $Cc ) )
+            {
+                if ( is_array( $Cc ) )
+                {
+                    foreach ( $Cc as $ccEmail )
+                    {
+                        $mime->addCc( $ccEmail );
+                    }
+                } else 
+                {
+                    $mime->addCc( $Cc );
+                }
+            }
+
+            if ( !empty( $Bcc ) )
+            {
+                if ( is_array( $Bcc ) )
+                {
+                    foreach ( $Bcc as $BccEmail )
+                    {
+                        $mime->addBcc( $BccEmail );
+                    }
+                } else 
+                {
+                    $mime->addCc( $Bcc );
+                }
+            }
+
+            if ( !empty( $this->attachment ) && is_array( $this->attachment ) )
+            {
+                foreach ( $this->attachment as $attachment )
+                {
+                    if ( !empty( $attachment['filename'] ) && !empty( $attachment['filetype'] ) )
+                    {
+                        $mime->addAttachment( $attachment['filename'], $attachment['filetype'] );
+                    }
+                }
+            }
+            
+            $message_body = $mime->getMessage();
+
+            $encodeMessage = $this->base64url_encode( $message_body );
+
+            $msg = new Google_Service_Gmail_Message();
+            $msg->setRaw( $encodeMessage );
+
+            $send = $this->service->users_messages->send("me", $msg);
+
+            if( !empty( $send->getId() ) && !empty( $extras['email_id'] ) )
+            {
+                $this->save( array( 'id' => $extras['email_id'], 'messageid' => $send->getId() ) );
+            }
+            else
+            {
+                log_message( "error", "Error: Sending email with gmail API." );
+                log_message( "error", json_encode( $send ) );
+            }
+
+        } catch (Exception $e) {
+            log_message( "error", "Error: Sending email with gmail API." );
+            log_message( "error", $e->getMessage() );
+        }
+    }
+
+    /**
+     * Save Sent email to database
+     * @param   string $email_to Email to send to
+     * @param   string $subject  Email subject to send
+     * @param   string $message  Email message to send
+     * @return  array            Contains email id, attachment id and file uploaded details
+     * @author  Anil <anilprz3@gmail.com>
+     * @version 1.0
+     */
+    public function storeSentEmail( string $email_to, string $subject, string $message )
+    {
+        $this->load->model('users_model');
+
+        $user = $this->users_model->getByColumn( array( "email" => $email_to ) )->row();
+
+        if ( empty( $user ) )
+        {
+            $user['id'] = null;
+
+            if ( !empty( $name ) ) {
+                $names = explode( " ", $name, 2 );
+                $firstName = $this->system->cleanString( trim($names[0]) );
+                $user['username'] = ( !empty( $firstName ) ? $firstName : 'user' ) . rand(100, 999);
+                $user['firstname'] =  $firstName;
+                $user['lastname'] = null;
+                if ( !empty( $names[1] ) )
+                {
+                    $user['lastname'] =  $this->system->cleanString( trim($names[1]) );
+                }
+            } else {
+                $user['username'] = 'user' . rand( 1000, 9999 );
+                $user['firstname'] =  null;
+            }
+
+            $user['email'] = trim( $email_to );
+            
+            $user_id = $this->users_model->save( $user );
+
+        } else {
+            $user_id = $user->id;
+        }
+
+        $data = array( 
+          'id' => null,
+          'user_id' => $user_id,
+          'email' => $email_to,
+          'subject' => $subject,
+          'content' => $message,
+          'messageid' => null,
+          'mime' => 'text/html',
+          'reply_of' => 0,
+          'threadID' => null,
+          'created_at' => mdate( "%Y-%m-%d %H:%i:%s", now() ),
+          'updated_at' => null,
+        );
+
+        $result_email_id = $this->save( $data );
+
+        $data = array( 'email_id' => false );
+
+        if ( $result_email_id !== true )
+        {
+            $config['upload_path']          = FCPATH . DIRECTORY_SEPARATOR . 'uploadz'. DIRECTORY_SEPARATOR . 'emails' . DIRECTORY_SEPARATOR . $result_email_id;
+            $config['allowed_types']        = $this->allowed_file_types;
+            $config['max_size']             = 6000;
+            $config['max_width']            = 2024;
+            $config['max_height']           = 2068;
+
+            if (!file_exists( $config['upload_path'] ))
+            {
+                mkdir ( $config['upload_path'] , 0775 );
+            }
+
+            $this->load->library( 'upload', $config );
+
+            $data = array( 'email_id' => $result_email_id );
+
+            if ( !$this->upload->do_upload('file') )
+            {
+                $error = array('error' => $this->upload->display_errors());
+                log_message( 'error', json_encode( $error ) );
+            }
+            else
+            {
+                $data['upload_data'] = $this->upload->data();
+
+                $this->load->model('attachments_model');
+
+                log_message( 'error', json_encode( $data ) );
+
+                $result_attach_id = $this->attachments_model->save( 
+                        array(      'id' => null,
+                                    'email_id' => $result_email_id,
+                                    'filename' => $data['upload_data']['file_name'],
+                                    'filetype' => $data['upload_data']['file_type']
+                        ) 
+                );
+
+                if ( $result_attach_id !== true )
+                {
+                    $data['attachment_id'] = $result_attach_id;
+                }
+            }
+
+            return $data;
+        }
+        return false;
+    }
+
+    // Fancy Base encoding copied from stackoverflow
+    public function base64url_encode( $data )
+    {
+        return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+    }
+
+    // Fancy Base dencoding copied from stackoverflow
+    public function base64url_decode( $data )
+    {
+        return base64_decode(strtr($b64url, '-_', '+/'));
+    }
+
+    /**
+     * Debug email message while APIing from gmail
+     * @param   string $userId      User id as "me" or user's email address to retrieve email
+     * @param   string $messageId   Message id from gmail client api
+     * @return  array               decoded message of email
+     * @author Anil <anilprz3@gmail.com>
+     * @version 1.0
+     */
+    public function debugMessage( string $userId, string $messageId )
     {
         $message = $this->service->users_messages->get($userId, $messageId, array('format' => 'full'));
         $payload = $message->getPayload();
@@ -521,18 +758,31 @@ class Gmail_model extends Emails_model
         return  $result;
     }
 
-    public function send_gemail($email_to, $subject, $message, $email_from = false, $email_name = false, $mime = 'text/html')
+    /**
+     * Depreciated Function to send email
+     * @param   string  $email_to   Email send to
+     * @param   string  $subject    Email subject to send
+     * @param   string  $message    Email messages to send
+     * @param   string  $email_from Email From email address
+     * @param   string  $email_name Email from Name
+     * @param   string  $mime       MIME type
+     * @return  void
+     * @author Anil <anilprz@gmail.com>
+     * @deprecated 1.0 not using traditional or manual way to setup
+     * @version 1.0
+     */
+    private function send_gemail($email_to, $subject, $message, $email_from = false, $email_name = false, $mime = 'text/html')
     {
         if (empty($this->service)) {
             return array('success' => false, 'message' => 'Service not found.', 'errorCode' => '004');
         }
 
         if (empty($email_from)) {
-            $email_from = $this->system->get_option('gmail_email_address_default');
+            $email_from = $this->system->get_option('google_email_from');
         }
 
         if (empty($email_name)) {
-            $email_name = $this->system->get_option('gmail_email_name_default');
+            $email_name = $this->system->get_option('google_name_from');
         }
 
         try {
@@ -557,5 +807,14 @@ class Gmail_model extends Emails_model
         return array('success' => true, 'message' => $message, 'send' => $send);
     }
 
+    // Fancy encode email address of to send email Copied from stackoverflow & blogs & gmail client api docs
+    // @deprecated 1.0 was used for sending email traditionally or manually.
+    private function encodeEmailAddresss( $recipient ){
+        $recipientsCharset = 'utf-8';
+        if (preg_match("/(.*)<(.*)>/", $recipient, $regs)) {
+            $recipient = '=?' . $recipientsCharset . '?B?'.base64_encode($regs[1]).'?= <'.$regs[2].'>';
+        }
+        return $recipient;
+    }
 
 }

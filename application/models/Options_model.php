@@ -26,12 +26,12 @@ class Options_model extends Core_Model {
         return $this->findAll()->result_array();
     }
 
-    public function insert_or_update( $data )
+    public function insert_or_update( array $data )
     {
         return $this->save( $data );
     }
 
-    public function get_option( $name )
+    public function get_option( string $name )
     {
         $val = $this->db->select("value")->where( "name", $name )->get( $this->tableName(), 1 )->row();
         
@@ -40,7 +40,7 @@ class Options_model extends Core_Model {
         return $val->value;
     }
 
-    public function update_option( $name, $value )
+    public function update_option( string $name, string $value )
     {
         $id = $this->primaryKey();
 
@@ -58,7 +58,7 @@ class Options_model extends Core_Model {
         return $value;
     }
 
-    public function add_option( $name, $value )
+    public function add_option( string $name, string $value )
     {
         $id = $this->primaryKey();
 
@@ -70,7 +70,7 @@ class Options_model extends Core_Model {
 
     }
 
-    public function delete_option( $name )
+    public function delete_option( string $name )
     {
         $id = $this->primaryKey();
 
@@ -89,7 +89,7 @@ class Options_model extends Core_Model {
         return false;
     }
 
-    public function cleanString($string) {
+    public function cleanString( string $string ) {
        $string = str_replace(' ', '-', $string); // Replaces all spaces with hyphens.
 
        return preg_replace('/[^A-Za-z0-9\-]/', '', $string); // Removes special chars.

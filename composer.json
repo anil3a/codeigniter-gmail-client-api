@@ -3,16 +3,19 @@
 	"name": "codeigniter/framework",
 	"type": "project",
 	"homepage": "https://anil3a.github.io/",
-	"license": "MIT",
-	"support": {
-		"forum": "http://forum.codeigniter.com/",
-		"wiki": "https://github.com/bcit-ci/CodeIgniter/wiki",
-		"slack": "https://codeigniterchat.slack.com",
-		"source": "https://github.com/bcit-ci/CodeIgniter"
-	},
+	"repositories": [
+      {
+        "type": "vcs",
+        "url": "https://github.com/muffycompo/php-mime-mail-parser"
+      }
+    ],
 	"require": {
 		"php": ">=5.3.7",
-		"google/apiclient": "^2.0"
+		"google/apiclient": "^2.0",
+		"pear/mail_mime": "^1.10",
+        "pear/mail_mime-decode": "^1.5",
+        "pear/pear_exception": "^1",
+        "php-mime-mail-parser/php-mime-mail-parser": "^2.9"
 	},
 	"suggest": {
 		"paragonie/random_compat": "Provides better randomness in PHP 5.x"
