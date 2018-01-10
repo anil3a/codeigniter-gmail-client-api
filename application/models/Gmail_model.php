@@ -161,7 +161,7 @@ class Gmail_model extends Emails_model
                     $pageToken = $messagesResponse->getNextPageToken();
                 }
             } catch (Exception $e) {
-                logActivity('ERROR: Getting gmail messages::: ' . $e->getMessage() );
+                log_message( 'error', 'ERROR: Getting gmail messages::: ' . $e->getMessage() );
                 $errors[] = $e->getMessage();
             }
         } while ($pageToken);
@@ -192,7 +192,7 @@ class Gmail_model extends Emails_model
     public function markMessageRead($userId, $messageId)
     {
         if (empty($this->service)) {
-            return array('success' => false, 'message' => 'Service not found.', 'errorCode' => '003');
+            return array('success' => false, 'message' => 'Service not found.', 'errorCode' => '002');
         }
 
         try {
@@ -222,7 +222,7 @@ class Gmail_model extends Emails_model
     public function markMessageUnread($userId, $messageId)
     {
         if (empty($this->service)) {
-            return array('success' => false, 'message' => 'Service not found.');
+            return array('success' => false, 'message' => 'Service not found.', 'errorCode' => '003');
         }
 
         try {
@@ -330,7 +330,7 @@ class Gmail_model extends Emails_model
     public function sendMessageToDb( string $userId, string $messageId)
     {
         if (empty($this->service)) {
-            return 'Service not found.';
+            return array('success' => false, 'message' => 'Service not found.', 'errorCode' => '004');
         }
 
         $return = array();
@@ -531,7 +531,7 @@ class Gmail_model extends Emails_model
         $send = false;
 
         if ( empty($this->service) ) {
-            return array('success' => false, 'message' => 'Service not found.', 'errorCode' => '004');
+            return array('success' => false, 'message' => 'Service not found.', 'errorCode' => '005');
         }
 
         if ( empty($email_from) ) {
@@ -774,7 +774,7 @@ class Gmail_model extends Emails_model
     private function send_gemail($email_to, $subject, $message, $email_from = false, $email_name = false, $mime = 'text/html')
     {
         if (empty($this->service)) {
-            return array('success' => false, 'message' => 'Service not found.', 'errorCode' => '004');
+            return array('success' => false, 'message' => 'Service not found.', 'errorCode' => '006');
         }
 
         if (empty($email_from)) {
@@ -815,6 +815,81 @@ class Gmail_model extends Emails_model
             $recipient = '=?' . $recipientsCharset . '?B?'.base64_encode($regs[1]).'?= <'.$regs[2].'>';
         }
         return $recipient;
+    }
+
+    /**
+     * Get all Threads in the user's mailbox.
+     * Copied from Google Client api docs
+     *
+     * @param  string $userId User's email address. The special value 'me'
+     * can be used to indicate the authenticated user.
+     * @return array Array of Threads.
+     */
+    function listThreads( $userId = "me" ) 
+    {
+        if (empty($this->service)) {
+            return array('success' => false, 'message' => 'Service not found.', 'errorCode' => '007');
+        }
+
+        $threads = array();
+        $pageToken = NULL;
+
+        $opt_param = array('labelIds' => array('UNREAD'), 'maxResults' => 6 );
+
+        do {
+            try {
+                if ($pageToken)
+                {
+                    $opt_param['pageToken'] = $pageToken;
+                }
+                
+                $threadsResponse = $this->service->users_threads->listUsersThreads($userId, $opt_param);
+                
+                if ($threadsResponse->getThreads())
+                {
+                    $threads = array_merge($threads, $threadsResponse->getThreads());
+                    $pageToken = $threadsResponse->getNextPageToken();
+                }
+            } catch (Exception $e) {
+                log_message( 'error', 'ERROR: Listing thread list::: ' . $e->getMessage() );
+                $pageToken = NULL;
+            }
+        } while ($pageToken);
+
+        foreach ($threads as $thread) {
+            print 'Thread with ID: ' . $thread->getId() . '<br/>';
+        }
+
+        return $threads;
+    }
+
+    /**
+     * Get Thread with given ID.
+     * Copied from Google Client api docs
+     *
+     * @param  string $userId User's email address. The special value 'me'
+     * can be used to indicate the authenticated user.
+     * @param  string $threadId ID of Thread to get.
+     * @return Google_Service_Gmail_Thread Retrieved Thread.
+     */
+    function getThread( $threadId, $userId = "me" )
+    {
+        if (empty($this->service)) {
+            return array('success' => false, 'message' => 'Service not found.', 'errorCode' => '007');
+        }
+
+        try {
+            $thread = $this->service->users_threads->get($userId, $threadId);
+            $messages = $thread->getMessages();
+            $msgCount = count($messages);
+
+            print 'Number of Messages in the Thread: ' . $msgCount;
+
+            return $thread;
+
+        } catch (Exception $e){
+            print 'An error occurred: ' . $e->getMessage();
+        }
     }
 
 }
