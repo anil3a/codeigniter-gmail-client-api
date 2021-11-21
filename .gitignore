@@ -30,7 +30,7 @@ user_guide_src/cilexer/pycilexer.egg-info/*
 # Apache2
 #-------------------------
 /error_log
-
+error.log
 
 ## Sublime Text cache files
 *.tmlanguage.cache
