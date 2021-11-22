@@ -108,8 +108,36 @@ class Gmail_model extends Emails_model
         if (empty($access_token)) {
             return false;
         }
+        $access_token = json_decode($access_token, true);
+        if(!isset($access_token['access_token'])) {
+            return false;
+        }
 
         return true;
+    }
+
+    /**
+     * Check if Authenticated is invalid
+     * @return  boolean 1|2|3 for authentication
+     *      1 = No access token
+     *      2 = Access token invalid
+     *      3 = Access token valid
+     * @author Anil <anilprz3@gmail.com>
+     * @version 2.0
+     */
+    public function isAuthenticatedValid()
+    {
+        $access_token = $this->system->get_option('google_access_token');
+
+        if (empty($access_token)) {
+            return 1;
+        }
+        $access_token = json_decode($access_token, true);
+        if(!isset($access_token['access_token'])) {
+            return 2;
+        }
+
+        return 3;
     }
 
     /**

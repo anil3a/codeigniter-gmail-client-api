@@ -21,7 +21,7 @@ class Home extends Core_Controller {
 
         foreach ( $options as $option )
         {
-            $this->form_validation->set_rules( $option['name'], $option['name'], 'trim|required');
+            $this->form_validation->set_rules( $option['name'], $option['name'], 'trim');
         }
         
         if( $this->input->post('submit') )
@@ -29,7 +29,7 @@ class Home extends Core_Controller {
             if ( $this->form_validation->run() == TRUE)
             {
                 $post = $this->input->post();
-             
+
                 if ( isset( $post['submit'] ) )
                 {
                     unset( $post['submit'] );

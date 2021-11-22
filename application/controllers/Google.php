@@ -99,6 +99,8 @@ class Google extends Core_Controller {
     public function settings()
     {
         $data['hasGoogleToken'] = $this->gmail_model->isAuthenticated();
+        $data['hasGoogleTokenInvalid'] = $this->gmail_model->isAuthenticatedValid();
+        $data['hasGoogleTokenInvalid'] = ( $data['hasGoogleTokenInvalid'] === 2 ) ? true : false;
         $data['urlToAuth'] = $this->gmail_model->get_url_auth();
 
         $this->setTitle( 'Settings for Google mail ' );
@@ -161,7 +163,7 @@ class Google extends Core_Controller {
     public function remove_access_token()
     {
         $this->system->delete_option('google_access_token');
-        redirect(site_url('google/emails'));
+        redirect(site_url('google/settings'));
 
     }
 
@@ -178,7 +180,7 @@ class Google extends Core_Controller {
     {
         $code = $this->input->get('code');
 
-        //log_message( 'error', 'Success Google Code. ' . json_encode( $code ) );
+        log_message( 'error', 'Success Google Code. ' . json_encode( $code ) );
 
         if (empty($code)) {
             redirect(site_url('google/emails'));
@@ -186,6 +188,8 @@ class Google extends Core_Controller {
 
         $token = $this->gmail_model->create_authentication($code);
 
-        //log_message( 'error', 'Success Google Access Token Updated.');
+        log_message( 'error', 'Success Google Access Token Updated to new access token = '. json_encode( $token ) );
+
+        redirect(site_url('google/settings'));
     }
 }
